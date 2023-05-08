@@ -5,6 +5,8 @@ Small library that replaces malloc/realloc/free with counterparts that track all
 
 Library is thread-safe.
 
+If you're building on a platform other than Windows, you'll need to replace the mutex and stack unwinding code with the equivalent for your platform.
+
 Usage
 -----
 
@@ -13,10 +15,10 @@ Usage is very straightforward. Initialise at the entry point of your program, an
 ```
 int main(int argc, char **argv)
 {
-  Mem_Init();
-  ...
-  Mem_Destroy();
-  return 0;
+    Mem_Init();
+    ...
+    Mem_Destroy();
+    return 0;
 }
 ```
 
@@ -26,11 +28,11 @@ int main(int argc, char **argv)
 - ```free(ptr);ptr = NULL;``` is replaced by ```Mem_FreeZ(&ptr)```
 - ```_msize``` is replaced by ```Mem_MemSize```
 
-By default, the file/function/line of each call is stored with each allocation/reallocation. To enable deeper stack unwinding, simply call ```Mem_SetBacktraceDepth(depth)``` with the required depth. This has a performance penalty.
+By default, the file/function/line of each call is stored with each allocation/reallocation. To enable deeper stack unwinding, simply call ```Mem_SetBacktraceDepth(depth)``` with the required depth. This has a performance penalty for values greater than zero.
 
 To set a maximum value in bytes for how much memory can be allocated in your application, call ```Mem_SetMemoryLimit(bytes)```.
 
-To retrieve information about how memory usage, use ```Mem_MemoryLimit()```, ```Mem_MemoryUsed()```, ```Mem_MemoryRemaining()```.
+To retrieve information on memory usage, use ```Mem_MemoryLimit()```, ```Mem_MemoryUsed()```, ```Mem_MemoryRemaining()```.
 
 The library provides a mechanism for user-defined callbacks in the case of certain failures:
 
@@ -49,7 +51,6 @@ Mem_SetFreeZNullCallback(void (*freeZ_failure_fp)(int type, void **old_block, si
 ```
 
 To dump allocation information and stack about ALL allocations to stdout, call ```Mem_ReportAllocatedBlocks()```.
-
 
 License
 -------
