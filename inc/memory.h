@@ -6,9 +6,11 @@ typedef struct backtrace_s
 
 typedef struct malloc_block_s
 {
-	backtrace_t			backtrace;
+	void				*base;
 	char				*file_immutable;
 	char				*function_immutable;
+	backtrace_t			backtrace;
+	size_t				alignment;
 	size_t				memsize;			// the user-data size. NOT the size of the allocation + overhead.
 	int					line;
 }malloc_block_t;
@@ -16,15 +18,19 @@ typedef struct malloc_block_s
 #define FREE_FAILURE_NULL		1
 #define FREE_FAILURE_DANGLING	2
 
-#define Mem_Malloc(x)		Mem_Malloc_IMP(x, __FILE__, __FUNCTION__, __LINE__)
-#define Mem_Realloc(x, y)	Mem_Realloc_IMP(x, y, __FILE__, __FUNCTION__, __LINE__)
-#define Mem_Free(x)			Mem_Free_IMP(x, __FILE__, __FUNCTION__, __LINE__)
-#define Mem_FreeZ(x)		Mem_FreeZ_IMP(x, __FILE__, __FUNCTION__, __LINE__)
+#define Mem_Malloc(x)				Mem_Malloc_IMP(x, __FILE__, __FUNCTION__, __LINE__)
+#define Mem_Realloc(x, y)			Mem_Realloc_IMP(x, y, __FILE__, __FUNCTION__, __LINE__)
+#define Mem_MallocAligned(x, y)		Mem_MallocAligned_IMP(x, y, __FILE__, __FUNCTION__, __LINE__)
+#define Mem_ReallocAligned(x, y, z)	Mem_ReallocAligned_IMP(x, y, z, __FILE__, __FUNCTION__, __LINE__)
+#define Mem_Free(x)					Mem_Free_IMP(x, __FILE__, __FUNCTION__, __LINE__)
+#define Mem_FreeZ(x)				Mem_FreeZ_IMP(x, __FILE__, __FUNCTION__, __LINE__)
 
 void Mem_Init();
 size_t Mem_MemSize(void *memblock);
 void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line);
 void *Mem_Realloc_IMP(void *ptr, size_t size, char *file, char *function, int line);
+void *Mem_MallocAligned_IMP(size_t size, uint32_t alignment, char *file, char *function, int line);
+void *Mem_ReallocAligned_IMP(void *ptr, size_t size, uint32_t alignment, char *file, char *function, int line);
 void Mem_Free_IMP(void *memblock, char *file, char *function, int line);
 void Mem_FreeZ_IMP(void **memblock, char *file, char *function, int line);
 size_t Mem_ReportAllocatedBlocks();
@@ -43,3 +49,5 @@ void (*Mem_GetDefaultMallocFail())(size_t allocation_size, size_t max_memory, si
 void (*Mem_GetDefaultFreeDanglingFail())(int type, void *old_block, size_t max_memory, size_t memory_remaining);
 void (*Mem_GetDefaultFreeNULLFail())(int type, void *old_block, size_t max_memory, size_t memory_remaining);
 void (*Mem_GetDefaultFreeZNULLFail())(int type, void **old_block, size_t max_memory, size_t memory_remaining);
+void *Mem_RawToManaged(void *memblock, size_t size);
+void *Mem_RawToManagedAligned(void *memblock, size_t size, uint32_t alignment);

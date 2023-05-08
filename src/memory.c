@@ -1,4 +1,4 @@
-// TODO: add Aligned malloc/realloc
+// TODO: add conversion from standard library pointers to pointers for this library
 
 #include <windows.h>
 #include <stdio.h>
@@ -8,7 +8,7 @@
 #include "..\inc\avl_tree.h"
 #include "..\inc\memory.h"
 
-#define STACKTRACE_START_OFFSET			1
+#define STACKTRACE_START_OFFSET			2
 #define STACKTRACE_MALLOC_FAIL_OFFSET	2
 #define STACKTRACE_FREE_FAIL_OFFSET		1
 #define STACKTRACE_ONFAIL_MAX_DEPTH		1024
@@ -61,7 +61,7 @@ static size_t Mem_BlockTotalMemUsed(void *memblock)
 {
 	malloc_block_t *ptr = &((malloc_block_t*)memblock)[-1];
 
-	return sizeof(void*) * ptr->backtrace.num_entries + ptr->memsize + sizeof(malloc_block_t);
+	return sizeof(void*) * ptr->backtrace.num_entries + ptr->memsize + sizeof(malloc_block_t) + (ptr->alignment ? ptr->alignment - 1 : 0);
 }
 
 static int Mem_AVLCompare(void *arg0, void *arg1, void *context)
@@ -76,8 +76,9 @@ static int Mem_AVLCompare(void *arg0, void *arg1, void *context)
 
 static void Mem_DestroyCB(void *value, void *context)
 {
+	malloc_block_t *ptr = (malloc_block_t*)value;
 	g_malloc.memory_used -= Mem_BlockTotalMemUsed(&((malloc_block_t*)value)[1]);
-	free(value);
+	free(ptr->base);
 }
 
 static int Mem_StackTrace_Snapshot(void **stack, int entries, int start_offset)
@@ -311,12 +312,11 @@ size_t Mem_MemSize(void *memblock)
 	ptr = &((malloc_block_t*)memblock)[-1];
 
 	return ptr->memsize;
-	//return ptr->memsize + sizeof(malloc_block_t) + sizeof(void*) * ptr->backtrace.num_entries;
 }
 
 void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line)
 {
-	malloc_block_t *ptr = malloc(size + sizeof(malloc_block_t));
+	malloc_block_t *ptr;
 	backtrace_t backtrace = {0};
 
 	if (Mem_MemoryUsed() + size + sizeof(malloc_block_t) > Mem_MemoryLimit())
@@ -331,6 +331,8 @@ void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line)
 		return 0;
 	}
 
+	ptr->base = ptr;
+	ptr->alignment = 0;
 	ptr->memsize = size;
 	ptr->file_immutable = file;
 	ptr->function_immutable = function;
@@ -349,6 +351,68 @@ void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line)
 void *Mem_Realloc_IMP(void *ptr, size_t size, char *file, char *function, int line)
 {
 	void *memblock = Mem_Malloc_IMP(size, file, function, line);
+	malloc_block_t *old_ptr = &((malloc_block_t*)ptr)[-1];
+	malloc_block_t *new_ptr;
+
+	if (memblock == 0)
+		return 0;
+
+	new_ptr = &((malloc_block_t*)memblock)[-1];
+
+	memcpy(memblock, ptr, old_ptr->memsize < new_ptr->memsize ? old_ptr->memsize : new_ptr->memsize);
+
+	Mem_Free(ptr);
+
+	return memblock;
+}
+void *Mem_MallocAligned_IMP(size_t size, uint32_t alignment, char *file, char *function, int line)
+{
+	malloc_block_t *ptr;
+	malloc_block_t *ptr_offset;
+	backtrace_t backtrace = {0};
+	uintptr_t offset;
+
+	if (alignment == 0)
+		return Mem_Malloc_IMP(size, file, function, line);
+
+	if (Mem_MemoryUsed() + size + sizeof(malloc_block_t) + alignment - 1 > Mem_MemoryLimit())
+		ptr = 0;
+	else
+		ptr = malloc(size + sizeof(malloc_block_t) + alignment - 1);
+
+	if (ptr == 0)
+	{
+		Mem_MallocFail(size);
+
+		return 0;
+	}
+
+	offset = (uintptr_t)ptr;
+	offset = ((offset + sizeof(malloc_block_t) + alignment - 1) / alignment) * alignment;
+
+	offset -= sizeof(malloc_block_t);
+	ptr_offset = (malloc_block_t*)offset;
+
+	ptr_offset->base = ptr;
+	ptr_offset->alignment = alignment;
+	ptr_offset->memsize = size;
+	ptr_offset->file_immutable = file;
+	ptr_offset->function_immutable = function;
+	ptr_offset->line = line;
+	ptr_offset->backtrace = backtrace;
+
+	Mem_PerformStackTrace(&ptr_offset->backtrace);
+
+	Mutex_Lock(&g_malloc.mutex);
+	g_malloc.memory_used += Mem_BlockTotalMemUsed(&ptr_offset[1]);
+	AVLTree_Insert(&g_malloc.tree, ptr_offset, 0, Mem_AVLCompare);
+	Mutex_Unlock(&g_malloc.mutex);
+
+	return &ptr_offset[1];
+}
+void *Mem_ReallocAligned_IMP(void *ptr, size_t size, uint32_t alignment, char *file, char *function, int line)
+{
+	void *memblock = Mem_MallocAligned_IMP(size, alignment, file, function, line);
 	malloc_block_t *old_ptr = &((malloc_block_t*)ptr)[-1];
 
 	if (memblock == 0)
@@ -411,7 +475,7 @@ void Mem_Free_IMP(void *memblock, char *file, char *function, int line)
 		g_malloc.memory_used -= Mem_BlockTotalMemUsed(memblock);
 		AVLTree_DeleteValue(&g_malloc.tree, ptr, 0, Mem_AVLCompare, 0);
 		Mem_FreeStackTrace(&ptr->backtrace);
-		free(ptr);
+		free(ptr->base);
 	}
 	Mutex_Unlock(&g_malloc.mutex);
 }
@@ -543,6 +607,28 @@ void (*Mem_GetDefaultFreeZNULLFail())(int type, void **old_block, size_t max_mem
 {
 	return 0;
 }
+
+void *Mem_RawToManaged(void *memblock, size_t size)
+{
+	void *ptr = Mem_Malloc_IMP(size, __FILE__, __FUNCTION__, __LINE__);
+
+	memcpy(ptr, memblock, size);
+
+	free(memblock);
+
+	return ptr;
+}
+void *Mem_RawToManagedAligned(void *memblock, size_t size, uint32_t alignment)
+{
+	void *ptr = Mem_MallocAligned_IMP(size, alignment, __FILE__, __FUNCTION__, __LINE__);
+
+	memcpy(ptr, memblock, size);
+
+	free(memblock);
+
+	return ptr;
+}
+
 // Used by AVL tree, only called when the mutex is already locked
 
 void Mem_AddUsedLocked(size_t size)
