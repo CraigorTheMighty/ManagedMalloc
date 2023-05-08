@@ -451,8 +451,6 @@ size_t Mem_ReportAllocatedBlocks()
 	AVLTree_Walk(g_malloc.tree, 0, &total, Mem_WalkAVLTreePrint);
 	Mutex_Unlock(&g_malloc.mutex);
 
-	printf("total / actual: %zu %zu\n", total, g_malloc.memory_used);
-
 	return total;
 }
 void Mem_FreeAll()

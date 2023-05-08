@@ -1,7 +1,4 @@
-#include <windows.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <inttypes.h>
 
 #include "..\inc\avl_tree.h"
@@ -17,7 +14,6 @@ static __forceinline int Math_Maxi32(int x, int y)
 static avl_tree_node_t *AVLTree_NewNode(avl_tree_node_t *parent, void *data)
 {
 	avl_tree_node_t *n = malloc(sizeof(avl_tree_node_t));
-	printf("****adding %zu bytes\n", sizeof(avl_tree_node_t));
 
 	Mem_AddUsedLocked(sizeof(avl_tree_node_t));
 
