@@ -67,6 +67,14 @@ By default, calling Free on a dangling pointer will dump the call stack, flush s
 
 To dump allocation information and stack about ALL allocations to stdout, call ```Mem_ReportAllocatedBlocks()```.
 
+Compiling
+---------
+
+You will need to include the following .libs to compile:
+
+- dbghelp.lib
+- psapi.lib
+
 License
 -------
 
