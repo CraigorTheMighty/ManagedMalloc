@@ -59,7 +59,7 @@ static size_t Mem_BlockTotalMemUsed(void *memblock)
 {
 	malloc_block_t *ptr = &((malloc_block_t*)memblock)[-1];
 
-	return sizeof(void*) * ptr->backtrace.num_entries + ptr->memsize + sizeof(malloc_block_t) + (ptr->alignment ? ptr->alignment - 1 : 0);
+	return sizeof(void*) * ptr->backtrace.num_entries + ptr->memsize + sizeof(malloc_block_t) + (ptr->alignment - 1);
 }
 
 static int Mem_AVLCompare(void *arg0, void *arg1, void *context)
@@ -330,7 +330,7 @@ void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line)
 	}
 
 	ptr->base = ptr;
-	ptr->alignment = 0;
+	ptr->alignment = 1;
 	ptr->memsize = size;
 	ptr->file_immutable = file;
 	ptr->function_immutable = function;
@@ -370,7 +370,7 @@ void *Mem_MallocAligned_IMP(size_t size, uint32_t alignment, char *file, char *f
 	backtrace_t backtrace = {0};
 	uintptr_t offset;
 
-	if (alignment == 0)
+	if (alignment <= 1)
 		return Mem_Malloc_IMP(size, file, function, line);
 
 	if (Mem_MemoryUsed() + size + sizeof(malloc_block_t) + alignment - 1 > Mem_MemoryLimit())
