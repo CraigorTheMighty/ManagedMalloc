@@ -23,9 +23,11 @@ int main(int argc, char **argv)
 ```
 
 - ```malloc``` is replaced by ```Mem_Malloc```
-- ```realloc``` is replaced by ```Mem_Realloc```
-- ```free``` is replaced by ```Mem_Free```
-- ```free(ptr);ptr = NULL;``` is replaced by ```Mem_FreeZ(&ptr)```
+- ```_aligned_malloc``` is replaced by ```Mem_MallocAligned```, but where "alignment" can be any number, including zero, not just a power-of-two
+- ```realloc``` is replaced by ```Mem_Realloc```, but where "alignment" can be any number, including zero, not just a power-of-two
+- ```_realloc_aligned``` is replaced by ```Mem_ReallocAligned```
+- ```free``` and ```_aligned_free``` are replaced by ```Mem_Free```
+- ```free(ptr);ptr = NULL;``` and ```_aligned_free(ptr);ptr = NULL;``` are replaced by ```Mem_FreeZ(&ptr)```
 - ```_msize``` is replaced by ```Mem_MemSize```
 
 Pointers allocated with this library ***MUST NOT*** be passed to the standard library memory allocation functions. You ***MUST*** use this library to Realloc/Free/etc the pointers. Similarly, pointers allocated with the standard library ***MUST NOT*** be passed to this library's functions.
