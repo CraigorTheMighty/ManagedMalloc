@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
 Pointers allocated with this library ***MUST NOT*** be passed to the standard library memory allocation functions. You ***MUST*** use this library to Realloc/Free/etc the pointers. Similarly, pointers allocated with the standard library ***MUST NOT*** be passed to this library's functions.
 
-To convert pointers allocated by standard malloc/realloc to pointers compatible with this library, use ```Mem_RawToManaged``` or ```Mem_RawToManagedAligned```. Not that this ***MUST NOT*** be given pointers allocated with ```_aligned_malloc```.
+To convert pointers allocated by standard malloc/realloc to pointers compatible with this library, use ```Mem_RawToManaged``` or ```Mem_RawToManagedAligned```. This effectively consists of allocating a new block, performing a ```memcpy```, and freeing the original block. Note that these functions ***MUST NOT*** be given pointers allocated with ```_aligned_malloc```.
 
 By default, the file/function/line of each call is stored with each allocation/reallocation. To enable deeper stack unwinding, simply call ```Mem_SetBacktraceDepth(depth)``` with the required depth. This has a performance penalty for values greater than zero.
 
