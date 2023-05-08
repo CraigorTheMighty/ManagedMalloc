@@ -20,10 +20,10 @@ int main(int argc, char **argv)
 }
 ```
 
-```malloc``` is replaced by ```Mem_Malloc```
-```realloc``` is replaced by ```Mem_Realloc```
-```free``` is replaced by ```Mem_Free```
-```_msize``` is replaced by ```Mem_MemSize```
+- ```malloc``` is replaced by ```Mem_Malloc```
+- ```realloc``` is replaced by ```Mem_Realloc```
+- ```free``` is replaced by ```Mem_Free```
+- ```_msize``` is replaced by ```Mem_MemSize```
 
 By default, the file/function/line of each call is stored with each allocation/reallocation. To enable deeper stack unwinding, simply call ```Mem_SetBacktraceDepth(depth)``` with the required depth. This has a performance penalty.
 
