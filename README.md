@@ -34,7 +34,7 @@ By default, the file/function/line of each call is stored with each allocation/r
 
 To set a maximum value in bytes for how much memory can be allocated in your application, call ```Mem_SetMemoryLimit(bytes)```.
 
-To retrieve information on memory usage, use ```Mem_MemoryLimit()```, ```Mem_MemoryUsed()```, ```Mem_MemoryRemaining()```.
+To retrieve information on memory usage, use ```Mem_MemoryLimit()```, ```Mem_MemoryUsed()```, ```Mem_MemoryRemaining()```. Note that ```Mem_MemoryUsed()``` can return values slightly greater than ```Mem_MemoryLimit()``` due to allocation overheads, so you ***MUST NOT*** perform arithmetic of the form ```size_t remaining = Mem_MemoryLimit() - Mem_MemoryUsed();```.
 
 The library provides a mechanism for user-defined callbacks in the case of certain failures:
 
