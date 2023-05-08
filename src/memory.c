@@ -312,57 +312,6 @@ size_t Mem_MemSize(void *memblock)
 	return ptr->memsize;
 }
 
-void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line)
-{
-	malloc_block_t *ptr;
-	backtrace_t backtrace = {0};
-
-	if (Mem_MemoryUsed() + size + sizeof(malloc_block_t) > Mem_MemoryLimit())
-		ptr = 0;
-	else
-		ptr = malloc(size + sizeof(malloc_block_t));
-
-	if (ptr == 0)
-	{
-		Mem_MallocFail(size);
-
-		return 0;
-	}
-
-	ptr->base = ptr;
-	ptr->alignment = 1;
-	ptr->memsize = size;
-	ptr->file_immutable = file;
-	ptr->function_immutable = function;
-	ptr->line = line;
-	ptr->backtrace = backtrace;
-
-	Mem_PerformStackTrace(&ptr->backtrace);
-
-	Mutex_Lock(&g_malloc.mutex);
-	g_malloc.memory_used += Mem_BlockTotalMemUsed(&ptr[1]);
-	AVLTree_Insert(&g_malloc.tree, ptr, 0, Mem_AVLCompare);
-	Mutex_Unlock(&g_malloc.mutex);
-
-	return &ptr[1];
-}
-void *Mem_Realloc_IMP(void *ptr, size_t size, char *file, char *function, int line)
-{
-	void *memblock = Mem_Malloc_IMP(size, file, function, line);
-	malloc_block_t *old_ptr = &((malloc_block_t*)ptr)[-1];
-	malloc_block_t *new_ptr;
-
-	if (memblock == 0)
-		return 0;
-
-	new_ptr = &((malloc_block_t*)memblock)[-1];
-
-	memcpy(memblock, ptr, old_ptr->memsize < new_ptr->memsize ? old_ptr->memsize : new_ptr->memsize);
-
-	Mem_Free(ptr);
-
-	return memblock;
-}
 void *Mem_MallocAligned_IMP(size_t size, uint32_t alignment, char *file, char *function, int line)
 {
 	malloc_block_t *ptr;
@@ -370,9 +319,10 @@ void *Mem_MallocAligned_IMP(size_t size, uint32_t alignment, char *file, char *f
 	backtrace_t backtrace = {0};
 	uintptr_t offset;
 
-	if (alignment <= 1)
-		return Mem_Malloc_IMP(size, file, function, line);
+	if (alignment < 1)
+		alignment = 1;
 
+	printf("allocating %zu -> %zu bytes\n", size, size + sizeof(malloc_block_t) + alignment - 1);
 	if (Mem_MemoryUsed() + size + sizeof(malloc_block_t) + alignment - 1 > Mem_MemoryLimit())
 		ptr = 0;
 	else
@@ -412,16 +362,26 @@ void *Mem_ReallocAligned_IMP(void *ptr, size_t size, uint32_t alignment, char *f
 {
 	void *memblock = Mem_MallocAligned_IMP(size, alignment, file, function, line);
 	malloc_block_t *old_ptr = &((malloc_block_t*)ptr)[-1];
+	malloc_block_t *new_ptr = &((malloc_block_t*)memblock)[-1];
 
 	if (memblock == 0)
 		return 0;
 
-	memcpy(memblock, ptr, old_ptr->memsize);
+	memcpy(memblock, ptr, old_ptr->memsize < new_ptr->memsize ? old_ptr->memsize : new_ptr->memsize);
 
 	Mem_Free(ptr);
 
 	return memblock;
 }
+void *Mem_Malloc_IMP(size_t size, char *file, char *function, int line)
+{
+	return Mem_MallocAligned_IMP(size, 1, file, function, line);
+}
+void *Mem_Realloc_IMP(void *ptr, size_t size, char *file, char *function, int line)
+{
+	return Mem_ReallocAligned_IMP(ptr, size, 1, file, function, line);
+}
+
 void Mem_Free_IMP(void *memblock, char *file, char *function, int line)
 {
 	malloc_block_t *ptr;
