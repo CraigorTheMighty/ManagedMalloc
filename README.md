@@ -56,7 +56,7 @@ Mem_SetFreeDanglingCallback(void (*free_failure_fp)(int type, void *old_block, s
 Mem_SetFreeZNullCallback(void (*freeZ_failure_fp)(int type, void **old_block, size_t max_memory, size_t memory_remaining));
 ```
 
-To restore default behaviour, use the following functions to retrieve the default callback functions that can be used as an argument to the Set functions:
+To restore default behaviour, use the following functions to retrieve the default callback functions that can be used as an argument to the ```Set[...]Callback``` functions:
 
 ```
 Mem_GetDefaultMallocFail()
