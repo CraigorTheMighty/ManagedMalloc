@@ -59,6 +59,9 @@ Mem_GetDefaultFreeNULLFail()
 Mem_GetDefaultFreeZNULLFail()
 ```
 
+By default, failure on Malloc/Realloc will dump the call stack, flush stdout, then dereference a NULL pointer.
+By default, calling Free on a dangling pointer will dump the call stack, flush stdout, then dereference a NULL pointer.
+
 To dump allocation information and stack about ALL allocations to stdout, call ```Mem_ReportAllocatedBlocks()```.
 
 License
