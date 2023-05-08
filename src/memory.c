@@ -1,5 +1,3 @@
-// TODO: add conversion from standard library pointers to pointers for this library
-
 #include <windows.h>
 #include <stdio.h>
 #include <Dbghelp.h>
